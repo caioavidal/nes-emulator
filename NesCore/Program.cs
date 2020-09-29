@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NesCore.Machine;
+using System;
 
 namespace NesCore
 {
@@ -6,7 +7,12 @@ namespace NesCore
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            var cpu = new Cpu();
+            var bus = new Bus();
+
+            cpu.ConnectToBus(bus);
+
+            Console.Read();
         }
     }
 }
