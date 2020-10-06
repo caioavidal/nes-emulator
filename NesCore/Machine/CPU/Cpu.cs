@@ -10,13 +10,14 @@ namespace NesCore.Machine
     /// </summary>
     public class Cpu
     {
-        private byte A;
-        private byte X;
-        private byte Y;
-        private byte P;
 
-        private ushort PC;
-        private ushort S = 0x00;
+        private byte Accumulator;
+        private byte X; // index register
+        private byte Y; // index register
+        private byte P; //status register
+
+        private ushort PC; // program counter
+        private ushort SP = 0x00; //Stack Pointer
 
         private byte[] _ram = new byte[1024 * 2];
 
@@ -38,7 +39,8 @@ namespace NesCore.Machine
         public void AND() { }
         public void ASL()
         {
-            A <<= 1;
+            CpuStatusFlag.B
+            Accumulator <<= 1;
         }
         public void BCC() { }
         public void BCS() { }
@@ -78,7 +80,7 @@ namespace NesCore.Machine
             else
                 SetFlag(CpuStatusFlag.N);
 
-            A = addressingMode(operand);
+            Accumulator = addressingMode(operand);
         }
 
         public void LDX() { }
@@ -98,12 +100,15 @@ namespace NesCore.Machine
         public void SEC() { }
         public void SED() { }
         public void SEI() { }
-        public void STA() { }
+        public void STA() 
+        { 
+        //    A = 
+        }
         public void STX() { }
         public void STY() { }
         public void TAX()
         {
-            X = A;
+            X = Accumulator;
         }
         public void TAY() { }
         public void TSX() { }
@@ -117,7 +122,7 @@ namespace NesCore.Machine
         public byte Immediate(byte value) => value;
         public byte ZeroPage(byte address) => _ram[address];
         public byte Absolute(ushort address) => _ram[address];
-       // public byte Indexed(ushort address, byte offset) => Buffer.BlockCopy(new byte {  }
+        //public byte Indexed(ushort address, byte offset) => Buffer.BlockCopy(new byte {  }
 
     }
 
