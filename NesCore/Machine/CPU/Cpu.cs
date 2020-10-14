@@ -1,6 +1,8 @@
 ﻿using NesCore.Machine.CPU;
+using NesCore.Machine.CPU.Instructions;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Numerics;
 using System.Text;
 
@@ -14,17 +16,28 @@ namespace NesCore.Machine
 
         private Registers _registers = new Registers();
 
-        private byte[] _ram = new byte[1024 * 2];
+        private RAM _ram = new RAM();
 
         private Bus _bus;
 
         public Cpu()
         {
+            _ram.Reset();
             _registers.Reset();
         }
 
         public void ReadData(ushort address) => _bus.ReadData(address);
         public void WriteData(ushort address, byte data) => _bus.WriteData(address, data);
+
+        public void Run(byte[] program)
+        {
+            _ram.Init(program);
+
+            while (true)
+            {
+                Decode();
+            }
+        }
 
         public void ConnectToBus(Bus bus)
         {
@@ -32,7 +45,24 @@ namespace NesCore.Machine
             //bus.AttachCpu(this);
         }
 
-   
+        private void Fetch()
+        {
+        }
+
+        private void Decode()
+        {
+            var code = _ram[_registers.PC];
+            var opcode = OpcodeMap.GetOpcode(code);
+
+            var disassembler = new Disassembler(this);
+            var instruction = disassembler.Decode(_ram[_registers.PC, _registers.PC + opcode.Bytes]);
+
+            instruction.Item1.Invoke(this, instruction.Item2);
+            _registers.PC += opcode.Bytes;
+
+        }
+
+
 
         public void ADC() { }
         public void AND() { }
@@ -129,9 +159,9 @@ namespace NesCore.Machine
         public void SEC() { }
         public void SED() { }
         public void SEI() { }
-        public void STA(byte operand)
+        public void STA(ushort address, byte offset = 0)
         {
-            _ram[operand] = _registers.Accumulator;
+            _ram.Store(_registers.Accumulator, address, offset);
         }
         public void STX(byte operand)
         {
@@ -141,35 +171,77 @@ namespace NesCore.Machine
         {
             _ram[operand] = _registers.Y;
         }
-      
+
         ///addressing modes
         ///
         public byte Immediate(byte value) => value;
         public byte ZeroPage(byte address) => _ram[address];
         public byte Absolute(ushort address) => _ram[address];
 
-        public byte[] Indexed(ushort address, ushort offset) => _ram[address..offset];
-        public byte[] ZeroPageIndexed(byte address, byte offset) => _ram[address..offset];
+        public byte[] ZeroPageX(byte address) => _ram[address, _registers.X];
+
+        public byte[] ZeroPageY(byte address) => _ram[address, _registers.Y];
+
+        public byte[] AbsoluteX(ushort address) => _ram[address, _registers.X];
+        public byte[] AbsoluteY(ushort address) => _ram[address, _registers.Y];
 
         //public byte Indirect(byte address) => _ram[_ram[address + X]];
 
-        public byte PreIndexedIndirect(byte address) => _ram[_ram[address + X]];
-        public byte PostIndexedIndirect(byte address) => _ram[_ram[address + Y]];
+        public byte IndexedIndirectX(byte address) => _ram[_ram[address + _registers.X]];
+        public byte IndexedIndirectY(byte address) => _ram[_ram[address + _registers.Y]];
 
 
     }
 
-
-
-    public class AddressingMode
+    public sealed class AddressingModes
     {
-        private readonly byte[] _ram;
-        public AddressingMode(byte[] ram)
+        public static IImmutableDictionary<AddressingModeName, AddressingMode> All = new Dictionary<AddressingModeName, AddressingMode>
         {
-            _ram = ram;
+            { AddressingModeName.Absolute, new AddressingMode(AddressingModeName.Absolute, AddressingModeType.NonIndexed)  },
+            { AddressingModeName.Immediate,new AddressingMode(AddressingModeName.Immediate, AddressingModeType.NonIndexed)  },
+            { AddressingModeName.ZeroPage, new AddressingMode(AddressingModeName.ZeroPage,AddressingModeType.NonIndexed ) },
+            { AddressingModeName.Indexed, new AddressingMode(AddressingModeName.Indexed,AddressingModeType.Indexed  )},
+            { AddressingModeName.ZeroPageX,new AddressingMode(AddressingModeName.ZeroPageX, AddressingModeType.Indexed  )},
+             { AddressingModeName.ZeroPageY,new AddressingMode(AddressingModeName.ZeroPageY, AddressingModeType.Indexed  )},
+
+            { AddressingModeName.IndexedIndirectX,new AddressingMode(AddressingModeName.IndexedIndirectX, AddressingModeType.Indirect )},
+            { AddressingModeName.PreIndexedIndirect,new AddressingMode(AddressingModeName.PreIndexedIndirect, AddressingModeType.Indirect )},
+        }.ToImmutableDictionary();
+    }
+    public readonly struct AddressingMode
+    {
+        public AddressingMode(AddressingModeName name, AddressingModeType type)
+        {
+            Name = name;
+            Type = type;
         }
 
+        public AddressingModeName Name { get; }
+        public AddressingModeType Type { get; }
+    }
 
+    public enum AddressingModeType
+    {
+        NonIndexed,
+        Indexed,
+        Indirect
+    }
+
+    public enum AddressingModeName
+    {
+        Immediate,
+        ZeroPage,
+        Absolute,
+        Indexed,
+        ZeroPageX,
+        ZeroPageY,
+        PreIndexedIndirect,
+        IndexedIndirectX,
+        AbsoluteX,
+        AbsoluteY,
+        IndexedIndirectY,
+        Implied,
+        Accumulator
     }
 
 

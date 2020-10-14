@@ -12,6 +12,8 @@ namespace NesCore
 
             cpu.ConnectToBus(bus);
 
+            cpu.Run(new byte[] { 0x8D, 10, 00 });
+
             Console.Read();
         }
     }
