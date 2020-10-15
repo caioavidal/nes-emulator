@@ -55,7 +55,7 @@ namespace NesCore.Machine
             var opcode = OpcodeMap.GetOpcode(code);
 
             var disassembler = new Disassembler(this);
-            var instruction = disassembler.Decode(_ram[_registers.PC, _registers.PC + opcode.Bytes]);
+            var instruction = disassembler.Decode(opcode, _ram[_registers.PC, _registers.PC + opcode.Bytes]);
 
             instruction.Item1.Invoke(this, instruction.Item2);
             _registers.PC += opcode.Bytes;
@@ -63,9 +63,27 @@ namespace NesCore.Machine
         }
 
 
+        /// <summary>
+        /// This instruction adds the contents of a memory location to the accumulator together with the carry bit. If overflow occurs the carry bit is set, this enables multiple byte addition to be performed.
 
-        public void ADC() { }
-        public void AND() { }
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="offset"></param>
+        public void ADC(ushort address, byte offset = 0)
+        {
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Accumulator);
+            _registers.P.SetNegativeFlagToValueOf7ThBit((byte)address);
+            //_registers.Accumulator += address
+        }
+        public void AND(ushort operand, byte offset)
+        {
+            operand &= _registers.Accumulator;
+
+            _registers.P.SetNegativeFlagToValueOf7ThBit((byte)operand);
+            _registers.P.SetZeroFlagIfEqualsToZero((byte)operand);
+
+            //_registers.Accumulator = operand;
+        }
         public void ASL()
         {
             _registers.BitShiftLeftAccumulator();
@@ -102,7 +120,7 @@ namespace NesCore.Machine
         /// </summary>
         public void LDA(byte operand, Func<byte, byte> addressingMode = null)
         {
-            addressingMode = addressingMode ?? Immediate;
+            //addressingMode = addressingMode ?? Immediate;
 
             if (operand >= 0x00 && operand <= 0x7f)
                 _registers.P.ClearFlag(CpuStatusFlag.N);
@@ -112,25 +130,25 @@ namespace NesCore.Machine
             _registers.P.SetZeroFlagIfEqualsToZero(operand);
 
 
-            _registers.Accumulator = addressingMode(operand);
+            //_registers.Accumulator = addressingMode(operand);
         }
 
         public void LDX(byte operand, Func<byte, byte> addressingMode = null)
         {
 
-            addressingMode = addressingMode ?? Immediate;
+            //addressingMode = addressingMode ?? Immediate;
 
             _registers.P.SetNegativeFlagToValueOf7ThBit(operand);
             _registers.P.SetZeroFlagIfEqualsToZero(operand);
 
 
-            _registers.X = addressingMode(operand);
+            // _registers.X = addressingMode(operand);
 
         }
         public void LDY(byte operand, Func<byte, byte> addressingMode = null)
         {
 
-            addressingMode = addressingMode ?? Immediate;
+            //   addressingMode = addressingMode ?? Immediate;
 
             if (operand >= 0x00 && operand <= 0x7f)
                 _registers.P.ClearFlag(CpuStatusFlag.N);
@@ -141,10 +159,12 @@ namespace NesCore.Machine
 
 
 
-            _registers.Y = addressingMode(operand);
+            // _registers.Y = addressingMode(operand);
 
         }
-        public void LSR() { }
+        public void LSR()
+        {
+        }
         public void NOP() { }
         public void ORO() { }
         public void PHA() { }
@@ -159,10 +179,13 @@ namespace NesCore.Machine
         public void SEC() { }
         public void SED() { }
         public void SEI() { }
-        public void STA(ushort address, byte offset = 0)
-        {
-            _ram.Store(_registers.Accumulator, address, offset);
-        }
+
+        /// <summary>
+        /// Stores the contents of the accumulator into memory.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void STA(Operand operand) => _ram.Store(_registers.Accumulator, operand.Address, operand.Offset ?? 0);
+
         public void STX(byte operand)
         {
             _ram[operand] = _registers.X;
@@ -174,57 +197,23 @@ namespace NesCore.Machine
 
         ///addressing modes
         ///
-        public byte Immediate(byte value) => value;
-        public byte ZeroPage(byte address) => _ram[address];
-        public byte Absolute(ushort address) => _ram[address];
+        public Operand Immediate(byte value) => new Operand(value: value);
+        public Operand ZeroPage(byte address) => new Operand(value: _ram[address], address: address);
+        public Operand Absolute(ushort address) => new Operand(value: _ram[address], address: address);
 
-        public byte[] ZeroPageX(byte address) => _ram[address, _registers.X];
+        public Operand ZeroPageX(byte address) => new Operand(values: _ram[address, _registers.X], address: address, offset: _registers.X);
 
-        public byte[] ZeroPageY(byte address) => _ram[address, _registers.Y];
+        public Operand ZeroPageY(byte address) => new Operand(values: _ram[address, _registers.Y], address: address, offset: _registers.Y);
 
-        public byte[] AbsoluteX(ushort address) => _ram[address, _registers.X];
-        public byte[] AbsoluteY(ushort address) => _ram[address, _registers.Y];
+        public Operand AbsoluteX(ushort address) => new Operand(values: _ram[address, _registers.X], address: address, offset: _registers.X);
+        public Operand AbsoluteY(ushort address) => new Operand(values: _ram[address, _registers.Y], address: address, offset: _registers.Y);
 
         //public byte Indirect(byte address) => _ram[_ram[address + X]];
 
-        public byte IndexedIndirectX(byte address) => _ram[_ram[address + _registers.X]];
-        public byte IndexedIndirectY(byte address) => _ram[_ram[address + _registers.Y]];
+        public Operand IndexedIndirectX(byte address) => new Operand(value: _ram[_ram[address + _registers.X]], address: _ram[address + _registers.X]);
+        public Operand IndexedIndirectY(byte address) => new Operand(value: _ram[_ram[address + _registers.Y]], address: _ram[address + _registers.Y]);
 
 
-    }
-
-    public sealed class AddressingModes
-    {
-        public static IImmutableDictionary<AddressingModeName, AddressingMode> All = new Dictionary<AddressingModeName, AddressingMode>
-        {
-            { AddressingModeName.Absolute, new AddressingMode(AddressingModeName.Absolute, AddressingModeType.NonIndexed)  },
-            { AddressingModeName.Immediate,new AddressingMode(AddressingModeName.Immediate, AddressingModeType.NonIndexed)  },
-            { AddressingModeName.ZeroPage, new AddressingMode(AddressingModeName.ZeroPage,AddressingModeType.NonIndexed ) },
-            { AddressingModeName.Indexed, new AddressingMode(AddressingModeName.Indexed,AddressingModeType.Indexed  )},
-            { AddressingModeName.ZeroPageX,new AddressingMode(AddressingModeName.ZeroPageX, AddressingModeType.Indexed  )},
-             { AddressingModeName.ZeroPageY,new AddressingMode(AddressingModeName.ZeroPageY, AddressingModeType.Indexed  )},
-
-            { AddressingModeName.IndexedIndirectX,new AddressingMode(AddressingModeName.IndexedIndirectX, AddressingModeType.Indirect )},
-            { AddressingModeName.PreIndexedIndirect,new AddressingMode(AddressingModeName.PreIndexedIndirect, AddressingModeType.Indirect )},
-        }.ToImmutableDictionary();
-    }
-    public readonly struct AddressingMode
-    {
-        public AddressingMode(AddressingModeName name, AddressingModeType type)
-        {
-            Name = name;
-            Type = type;
-        }
-
-        public AddressingModeName Name { get; }
-        public AddressingModeType Type { get; }
-    }
-
-    public enum AddressingModeType
-    {
-        NonIndexed,
-        Indexed,
-        Indirect
     }
 
     public enum AddressingModeName
@@ -232,10 +221,8 @@ namespace NesCore.Machine
         Immediate,
         ZeroPage,
         Absolute,
-        Indexed,
         ZeroPageX,
         ZeroPageY,
-        PreIndexedIndirect,
         IndexedIndirectX,
         AbsoluteX,
         AbsoluteY,
