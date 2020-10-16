@@ -22,12 +22,15 @@ namespace NesCore.Machine.CPU
         /// <summary>
         /// Stack Pointer
         /// </summary>
-        public ushort SP;
+        public ushort SP { get; private set; }
 
         public void Reset()
         {
-            SP = 0x00;
+            SP = 0x0100;
         }
+
+        public void IncrementStackPointer() => SP++;
+        public void DecrementStackPointer() => SP--;
 
         public void BitShiftLeftAccumulator() => Accumulator <<= 1;
 

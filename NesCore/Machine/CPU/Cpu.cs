@@ -69,20 +69,20 @@ namespace NesCore.Machine
         /// </summary>
         /// <param name="address"></param>
         /// <param name="offset"></param>
-        public void ADC(ushort address, byte offset = 0)
+        //todo
+        public void ADC(Operand operand)
         {
+            _registers.Accumulator += operand.Value.Value;
             _registers.P.SetZeroFlagIfEqualsToZero(_registers.Accumulator);
-            _registers.P.SetNegativeFlagToValueOf7ThBit((byte)address);
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.Accumulator);
             //_registers.Accumulator += address
         }
-        public void AND(ushort operand, byte offset)
+        public void AND(Operand operand)
         {
-            operand &= _registers.Accumulator;
+            _registers.Accumulator &= operand.Value.Value;
 
-            _registers.P.SetNegativeFlagToValueOf7ThBit((byte)operand);
-            _registers.P.SetZeroFlagIfEqualsToZero((byte)operand);
-
-            //_registers.Accumulator = operand;
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.Accumulator);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Accumulator);
         }
         public void ASL()
         {
@@ -91,28 +91,138 @@ namespace NesCore.Machine
         public void BCC() { }
         public void BCS() { }
         public void BEQ() { }
-        public void BIT() { }
-        public void BMI() { }
-        public void BNE() { }
-        public void BPL() { }
-        public void BRK() { }
-        public void BVC() { }
-        public void BVS() { }
+        public void BIT()
+        {
+
+        }
+        public void BMI(Operand operand) { }
+        public void BNE(Operand operand) { }
+        public void BPL(Operand operand) { }
+        public void BRK(Operand operand) { }
+        public void BVC(Operand operand) { }
+        public void BVS(Operand operand) { }
         public void CLC() => _registers.P.ClearFlag(CpuStatusFlag.C);
         public void CLD() => _registers.P.ClearFlag(CpuStatusFlag.D);
         public void CLI() => _registers.P.ClearFlag(CpuStatusFlag.I);
         public void CLV() => _registers.P.ClearFlag(CpuStatusFlag.V);
-        
-        public void CMP() { }
-        public void CPX() { }
-        public void CPY() { }
-        public void DEC() { }
-        public void DEX() { }
-        public void DEY() { }
-        public void EOR() { }
-        public void INC() { }
-        public void INX() { }
-        public void INY() { }
+
+        public void CMP(Operand operand)
+        {
+            if (_registers.Accumulator >= operand.Value.Value)
+                _registers.P.SetFlag(CpuStatusFlag.C);
+
+            if (_registers.Accumulator == operand.Value.Value)
+                _registers.P.SetFlag(CpuStatusFlag.Z);
+
+            var result = (byte)(_registers.Accumulator - operand.Value.Value);
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(result);
+
+        }
+        public void CPX(Operand operand)
+        {
+            if (_registers.X >= operand.Value.Value)
+                _registers.P.SetFlag(CpuStatusFlag.C);
+
+            if (_registers.X == operand.Value.Value)
+                _registers.P.SetFlag(CpuStatusFlag.Z);
+
+            var result = (byte)(_registers.X - operand.Value.Value);
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(result);
+        }
+        public void CPY(Operand operand)
+        {
+            if (_registers.Y >= operand.Value.Value)
+                _registers.P.SetFlag(CpuStatusFlag.C);
+
+            if (_registers.Y == operand.Value.Value)
+                _registers.P.SetFlag(CpuStatusFlag.Z);
+
+            var result = (byte)(_registers.Y - operand.Value.Value);
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(result);
+        }
+
+        /// <summary>
+        /// Subtracts one from the value held at a specified memory location setting the zero and negative flags as appropriate.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void DEC(Operand operand)
+        {
+
+            _ram[operand.Address] = (byte)(operand.Value.Value - 1);
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_ram[operand.Address]);
+            _registers.P.SetZeroFlagIfEqualsToZero(_ram[operand.Address]);
+        }
+        /// <summary>
+        /// Subtracts one from the X register setting the zero and negative flags as appropriate.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void DEX(Operand operand)
+        {
+
+            _registers.X = (byte)(operand.Value.Value - 1);
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.X);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.X);
+        }
+
+        /// <summary>
+        /// Subtracts one from the Y register setting the zero and negative flags as appropriate.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void DEY(Operand operand)
+        {
+            _registers.Y = (byte)(operand.Value.Value - 1);
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.Y);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Y);
+        }
+        public void EOR(Operand operand)
+        {
+            _registers.Accumulator ^= operand.Value.Value;
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.Accumulator);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Accumulator);
+        }
+
+        /// <summary>
+        /// Adds one to the value held at a specified memory location setting the zero and negative flags as appropriate.
+        /// </summary>
+        public void INC(Operand operand)
+        {
+
+            _ram[operand.Address] = (byte)(operand.Value.Value + 1);
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_ram[operand.Address]);
+            _registers.P.SetZeroFlagIfEqualsToZero(_ram[operand.Address]);
+        }
+
+        /// <summary>
+        /// Adds one to the X register setting the zero and negative flags as appropriate.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void INX(Operand operand)
+        {
+            _registers.X = (byte)(operand.Value.Value + 1);
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.X);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.X);
+        }
+
+        /// <summary>
+        /// Adds one to the Y register setting the zero and negative flags as appropriate.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void INY(Operand operand)
+        {
+            _registers.Y = (byte)(operand.Value.Value + 1);
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.Y);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Y);
+        }
         public void JMP(Operand operand) => _registers.PC = operand.Address;
         public void JSR() { }
 
@@ -121,9 +231,10 @@ namespace NesCore.Machine
         /// </summary>
         public void LDA(Operand operand)
         {
-            _registers.P.SetNegativeFlagToValueOf7ThBit(_registers.Accumulator);
-            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Accumulator);
             _registers.Accumulator = operand.Value.Value;
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.Accumulator);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Accumulator);
         }
 
         /// <summary>
@@ -132,10 +243,11 @@ namespace NesCore.Machine
         /// <param name="operand"></param>
         public void LDX(Operand operand)
         {
-            _registers.P.SetNegativeFlagToValueOf7ThBit(_registers.X);
+            _registers.X = operand.Value.Value;
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.X);
             _registers.P.SetZeroFlagIfEqualsToZero(_registers.X);
 
-            _registers.Y = operand.Value.Value;
         }
 
         /// <summary>
@@ -145,11 +257,10 @@ namespace NesCore.Machine
         /// <param name="addressingMode"></param>
         public void LDY(Operand operand)
         {
-
-            _registers.P.SetNegativeFlagToValueOf7ThBit(_registers.Y);
-            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Y);
-
             _registers.Y = operand.Value.Value;
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.Y);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Y);
         }
         public void LSR()
         {
@@ -159,37 +270,76 @@ namespace NesCore.Machine
         /// The NOP instruction causes no changes to the processor other than the normal incrementing of the program counter to the next instruction.
         /// </summary>
         public void NOP() { }
-        public void ORO() { }
-        public void PHA() { }
-        public void PHP() { }
-        public void PLA() { }
-        public void PLP() { }
-        public void ROL() { }
-        public void ROR() { }
-        public void RTI() { }
-        public void RTS() { }
-        public void SBC() { }
-        public void SEC() { }
-        public void SED() { }
-        public void SEI() { }
+        public void ORA(Operand operand)
+        {
+            _registers.Accumulator |= operand.Value.Value;
+
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.Accumulator);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Accumulator);
+        }
+
+        #region Stack Operations
+        public void PHA()
+        {
+            _ram.Stack.Push(_registers.Accumulator);
+            _registers.IncrementStackPointer();
+        }
+        public void PHP()
+        {
+            _ram.Stack.Push(_registers.P.Status);
+            _registers.IncrementStackPointer();
+        }
+        public void PLA()
+        {
+            _registers.Accumulator = _ram.Stack.Pop();
+            _registers.DecrementStackPointer();
+
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Accumulator);
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.Accumulator);
+        }
+        public void PLP()
+        {
+            _registers.P.SetNewStatus(_ram.Stack.Pop());
+            _registers.DecrementStackPointer();
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Move each of the bits in either A or M one place to the left. Bit 0 is filled with the current value of the carry flag whilst the old bit 7 becomes the new carry flag value.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void ROL(Operand operand)
+        {
+            var result = operand.Value.Value << 1;
+
+
+        }
+        public void ROR(Operand operand) { }
+        public void RTI(Operand operand) { }
+        public void RTS(Operand operand) { }
+        public void SBC(Operand operand) { }
+        public void SEC(Operand operand) { }
+        public void SED(Operand operand) { }
+        public void SEI(Operand operand) { }
 
         /// <summary>
         /// Stores the contents of the accumulator into memory.
         /// </summary>
         /// <param name="operand"></param>
-        public void STA(Operand operand) => _ram.Store(_registers.Accumulator, operand.Address, operand.Offset ?? 0);
+        public void STA(Operand operand) => _ram[operand.Address] = _registers.Accumulator;
 
         /// <summary>
         /// Stores the contents of the X register into memory.
         /// </summary>
         /// <param name="operand"></param>
-        public void STX(Operand operand) => _ram.Store(_registers.Accumulator, operand.Address, operand.Offset ?? 0);
+        public void STX(Operand operand) => _ram[operand.Address] = _registers.X;
 
         /// <summary>
         /// Stores the contents of the Y register into memory.
         /// </summary>
         /// <param name="operand"></param>
-        public void STY(Operand operand) => _ram.Store(_registers.Accumulator, operand.Address, operand.Offset ?? 0);
+        public void STY(Operand operand) => _ram[operand.Address] = _registers.Y;
 
 
         ///addressing modes
@@ -200,12 +350,12 @@ namespace NesCore.Machine
 
         public Operand ZeroPageX(byte address) => new Operand(value: _ram[address + _registers.X], address: (byte)(address + _registers.X));
 
-        public Operand ZeroPageY(byte address) => new Operand(values: _ram[address, _registers.Y], address: address, offset: _registers.Y);
+        public Operand ZeroPageY(byte address) => new Operand(value: _ram[address + _registers.Y], address: (byte)(address + _registers.Y));
 
-        public Operand AbsoluteX(ushort address) => new Operand(values: _ram[address, _registers.X], address: address, offset: _registers.X);
-        public Operand AbsoluteY(ushort address) => new Operand(values: _ram[address, _registers.Y], address: address, offset: _registers.Y);
+        public Operand AbsoluteX(ushort address) => new Operand(value: _ram[address + _registers.X], address: (byte)(address + _registers.X));
+        public Operand AbsoluteY(ushort address) => new Operand(value: _ram[address + _registers.Y], address: (byte)(address + _registers.Y));
 
-        //public byte Indirect(byte address) => _ram[_ram[address + X]];
+        public Operand Indirect(ushort address) => new Operand(value: _ram[(ushort)(_ram[address] << 8 | _ram[address + 1])], address: address);
 
         public Operand IndexedIndirectX(byte address) => new Operand(value: _ram[_ram[address + _registers.X]], address: _ram[address + _registers.X]);
         public Operand IndexedIndirectY(byte address) => new Operand(value: _ram[_ram[address + _registers.Y]], address: _ram[address + _registers.Y]);

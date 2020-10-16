@@ -9,11 +9,9 @@ namespace NesCore.Machine.CPU
     {
         public byte Status { get; private set; }
 
-        public void SetNegativeFlagToValueOf7ThBit(byte value)
+        public void SetNegativeFlagIf7ThBitIsSet(byte value)
         {
-            if ((value >> 7 & 1) == 0)
-                ClearFlag(CpuStatusFlag.N);
-            else
+            if ((value >> 7 & 1) == 1)
                 SetFlag(CpuStatusFlag.N);
         }
 
@@ -27,5 +25,7 @@ namespace NesCore.Machine.CPU
 
         public void ClearFlag(CpuStatusFlag flag) => Status &= (byte)~flag;
         public void SetFlag(CpuStatusFlag flag) => Status |= (byte)flag;
+
+        public void SetNewStatus(byte status) => Status = status;
     }
 }
