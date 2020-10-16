@@ -98,10 +98,11 @@ namespace NesCore.Machine
         public void BRK() { }
         public void BVC() { }
         public void BVS() { }
-        public void CLC() { }
-        public void CLD() { }
-        public void CLI() { }
-        public void CLV() { }
+        public void CLC() => _registers.P.ClearFlag(CpuStatusFlag.C);
+        public void CLD() => _registers.P.ClearFlag(CpuStatusFlag.D);
+        public void CLI() => _registers.P.ClearFlag(CpuStatusFlag.I);
+        public void CLV() => _registers.P.ClearFlag(CpuStatusFlag.V);
+        
         public void CMP() { }
         public void CPX() { }
         public void CPY() { }
@@ -112,59 +113,51 @@ namespace NesCore.Machine
         public void INC() { }
         public void INX() { }
         public void INY() { }
-        public void JMP() { }
+        public void JMP(Operand operand) => _registers.PC = operand.Address;
         public void JSR() { }
 
         /// <summary>
         /// LDA (Load Accumulator With Memory) loads the accumulator with specified memory. It is probably the most-used opcode in 6502 assembly as it loads the most-used register. It is similar in function to LDX and LDY.
         /// </summary>
-        public void LDA(byte operand, Func<byte, byte> addressingMode = null)
+        public void LDA(Operand operand)
         {
-            //addressingMode = addressingMode ?? Immediate;
-
-            if (operand >= 0x00 && operand <= 0x7f)
-                _registers.P.ClearFlag(CpuStatusFlag.N);
-            else
-                _registers.P.SetFlag(CpuStatusFlag.N);
-
-            _registers.P.SetZeroFlagIfEqualsToZero(operand);
-
-
-            //_registers.Accumulator = addressingMode(operand);
+            _registers.P.SetNegativeFlagToValueOf7ThBit(_registers.Accumulator);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Accumulator);
+            _registers.Accumulator = operand.Value.Value;
         }
 
-        public void LDX(byte operand, Func<byte, byte> addressingMode = null)
+        /// <summary>
+        /// Loads a byte of memory into the X register setting the zero and negative flags as appropriate.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void LDX(Operand operand)
         {
+            _registers.P.SetNegativeFlagToValueOf7ThBit(_registers.X);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.X);
 
-            //addressingMode = addressingMode ?? Immediate;
-
-            _registers.P.SetNegativeFlagToValueOf7ThBit(operand);
-            _registers.P.SetZeroFlagIfEqualsToZero(operand);
-
-
-            // _registers.X = addressingMode(operand);
-
+            _registers.Y = operand.Value.Value;
         }
-        public void LDY(byte operand, Func<byte, byte> addressingMode = null)
+
+        /// <summary>
+        /// Loads a byte of memory into the Y register setting the zero and negative flags as appropriate.
+        /// </summary>
+        /// <param name="operand"></param>
+        /// <param name="addressingMode"></param>
+        public void LDY(Operand operand)
         {
 
-            //   addressingMode = addressingMode ?? Immediate;
+            _registers.P.SetNegativeFlagToValueOf7ThBit(_registers.Y);
+            _registers.P.SetZeroFlagIfEqualsToZero(_registers.Y);
 
-            if (operand >= 0x00 && operand <= 0x7f)
-                _registers.P.ClearFlag(CpuStatusFlag.N);
-            else
-                _registers.P.SetFlag(CpuStatusFlag.N);
-
-            _registers.P.SetZeroFlagIfEqualsToZero(operand);
-
-
-
-            // _registers.Y = addressingMode(operand);
-
+            _registers.Y = operand.Value.Value;
         }
         public void LSR()
         {
         }
+
+        /// <summary>
+        /// The NOP instruction causes no changes to the processor other than the normal incrementing of the program counter to the next instruction.
+        /// </summary>
         public void NOP() { }
         public void ORO() { }
         public void PHA() { }
@@ -186,14 +179,18 @@ namespace NesCore.Machine
         /// <param name="operand"></param>
         public void STA(Operand operand) => _ram.Store(_registers.Accumulator, operand.Address, operand.Offset ?? 0);
 
-        public void STX(byte operand)
-        {
-            _ram[operand] = _registers.X;
-        }
-        public void STY(byte operand)
-        {
-            _ram[operand] = _registers.Y;
-        }
+        /// <summary>
+        /// Stores the contents of the X register into memory.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void STX(Operand operand) => _ram.Store(_registers.Accumulator, operand.Address, operand.Offset ?? 0);
+
+        /// <summary>
+        /// Stores the contents of the Y register into memory.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void STY(Operand operand) => _ram.Store(_registers.Accumulator, operand.Address, operand.Offset ?? 0);
+
 
         ///addressing modes
         ///
@@ -201,7 +198,7 @@ namespace NesCore.Machine
         public Operand ZeroPage(byte address) => new Operand(value: _ram[address], address: address);
         public Operand Absolute(ushort address) => new Operand(value: _ram[address], address: address);
 
-        public Operand ZeroPageX(byte address) => new Operand(values: _ram[address, _registers.X], address: address, offset: _registers.X);
+        public Operand ZeroPageX(byte address) => new Operand(value: _ram[address + _registers.X], address: (byte)(address + _registers.X));
 
         public Operand ZeroPageY(byte address) => new Operand(values: _ram[address, _registers.Y], address: address, offset: _registers.Y);
 

@@ -24,8 +24,6 @@ namespace NesCore.Machine.CPU.Instructions
             var instruction = _cpu.GetType().GetMethod(opcode.Instruction);
 
             return new Tuple<MethodInfo, object[]>(instruction, new object[] { operand }); ;
-
-            //opcode.Instruction
         }
     }
 }
