@@ -29,8 +29,9 @@ namespace NesCore.Machine.CPU.Instructions
 
         private ushort? Address16 { get; }
         private byte? Address8 { get; }
-        public ushort Address => Address8 ?? Address16 ?? throw new Exception("No value found in operand");
+        public ushort Address => Address8 ?? Address16 ?? 0;
         public byte? Value { get; }
         public bool UseAddress => Address8 != null;
+        public bool UseAccumulator => Value.HasValue && (Address16 ?? Address8 ?? null) == null;
     }
 }

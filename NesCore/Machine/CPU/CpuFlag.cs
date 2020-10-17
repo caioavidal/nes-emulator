@@ -27,5 +27,26 @@ namespace NesCore.Machine.CPU
         public void SetFlag(CpuStatusFlag flag) => Status |= (byte)flag;
 
         public void SetNewStatus(byte status) => Status = status;
+
+        public void SetFlag(CpuStatusFlag flag, byte value)
+        {
+            if (value == 1)
+                SetFlag(flag);
+            else
+                ClearFlag(flag);
+        }
+
+        public byte GetFlag(CpuStatusFlag flag)
+        {
+            return (byte)(Status & (byte)flag);
+        }
+
+        public byte this[CpuStatusFlag flag]
+        {
+            get
+            {
+                return GetFlag(flag);
+            }
+        }
     }
 }

@@ -10,16 +10,12 @@ namespace NesCore.Machine.CPU
     {
         private byte[] _ram;
 
-        private ushort _stackStart;
-        private ushort _stackEnd;
-
         public Stack<byte> Stack { get; private set; }
 
         public void Reset()
         {
             Stack = new Stack<byte>(0xFF);
             _ram = new byte[1024 * 64];
-            _stackEnd = 0x1FF;
         }
 
         public void Init(byte[] program)

@@ -88,7 +88,13 @@ namespace NesCore.Machine
         {
             _registers.BitShiftLeftAccumulator();
         }
-        public void BCC() { }
+
+        /// <summary>
+        /// If the carry flag is clear then add the relative displacement to the program counter to cause a branch to a new location.
+        /// </summary>
+        public void BCC() {
+            
+        }
         public void BCS() { }
         public void BEQ() { }
         public void BIT()
@@ -223,8 +229,23 @@ namespace NesCore.Machine
             _registers.P.SetNegativeFlagIf7ThBitIsSet(_registers.Y);
             _registers.P.SetZeroFlagIfEqualsToZero(_registers.Y);
         }
+
+        /// <summary>
+        /// Sets the program counter to the address specified by the operand.
+        /// An original 6502 has does not correctly fetch the target address if the indirect vector falls on a page boundary (e.g. $xxFF where xx is any value from $00 to $FF). 
+        /// In this case fetches the LSB from $xxFF as expected but takes the MSB from $xx00. This is fixed in some later chips like the 65SC02 so for compatibility always ensure the indirect vector is not at the end of the page.
+        /// </summary>
+        /// <param name="operand"></param>
         public void JMP(Operand operand) => _registers.PC = operand.Address;
-        public void JSR() { }
+
+        /// <summary>
+        /// The JSR instruction pushes the address (minus one) of the return point on to the stack and then sets the program counter to the target memory address.
+        /// </summary>
+        public void JSR(Operand operand) 
+        {
+            _ram.Stack.Push((byte)(_registers.PC - 1));
+            _registers.PC = operand.Address;
+        }
 
         /// <summary>
         /// LDA (Load Accumulator With Memory) loads the accumulator with specified memory. It is probably the most-used opcode in 6502 assembly as it loads the most-used register. It is similar in function to LDX and LDY.
@@ -311,13 +332,73 @@ namespace NesCore.Machine
         /// <param name="operand"></param>
         public void ROL(Operand operand)
         {
-            var result = operand.Value.Value << 1;
+            var result = (byte)(operand.Value.Value << 1);
 
+            if (_registers.P[CpuStatusFlag.C] == 1)
+            {
+                result |= _registers.P[CpuStatusFlag.C];
+            }
+            else
+            {
+                result &= (byte)~(_registers.P[CpuStatusFlag.C]);
 
+            }
+
+            if (operand.UseAccumulator)
+            {
+                _registers.Accumulator = result;
+            }
+            else
+            {
+                _ram[operand.Address] = result;
+            }
+
+            _registers.P.SetFlag(CpuStatusFlag.C, (byte)(operand.Value.Value >> 7 & 1));
+            _registers.P.SetZeroFlagIfEqualsToZero(result);
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(result);
         }
-        public void ROR(Operand operand) { }
+
+        /// <summary>
+        /// Move each of the bits in either A or M one place to the right. Bit 7 is filled with the current value of the carry flag whilst the old bit 0 becomes the new carry flag value.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void ROR(Operand operand) {
+
+            var result = (byte)(operand.Value.Value >> 1);
+
+            if (_registers.P[CpuStatusFlag.C] == 1)
+            {
+                result |= (byte)(_registers.P[CpuStatusFlag.C] << 7);
+            }
+            else
+            {
+                result &= (byte)~(_registers.P[CpuStatusFlag.C] << 7);
+
+            }
+
+            if (operand.UseAccumulator)
+            {
+                _registers.Accumulator = result;
+            }
+            else
+            {
+                _ram[operand.Address] = result;
+            }
+
+            _registers.P.SetFlag(CpuStatusFlag.C, (byte)(operand.Value.Value & 1));
+            _registers.P.SetZeroFlagIfEqualsToZero(result);
+            _registers.P.SetNegativeFlagIf7ThBitIsSet(result);
+        }
         public void RTI(Operand operand) { }
-        public void RTS(Operand operand) { }
+
+        /// <summary>
+        /// The RTS instruction is used at the end of a subroutine to return to the calling routine. It pulls the program counter (minus one) from the stack.
+        /// </summary>
+        /// <param name="operand"></param>
+        public void RTS(Operand operand) 
+        {
+            _registers.PC = (ushort)(_ram.Stack.Pop() - 1);
+        }
         public void SBC(Operand operand) { }
         public void SEC(Operand operand) { }
         public void SED(Operand operand) { }
